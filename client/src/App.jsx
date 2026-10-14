@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
+import "./App.css";
 import axios from "axios";
 import { Bell } from "lucide-react";
 
@@ -221,6 +221,42 @@ function App() {
     }
   }
 
+  async function loadDashboard() {
+    if (!isLoggedIn) {
+      setFoods([]);
+      setMyClaims([]);
+      setDonorClaims([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (user?.role === "donor") {
+        const [foodResponse, claimResponse] = await Promise.all([
+          api.get("/food", { params: { status: "all", mine: "true" } }),
+          api.get("/food/donor-claims")
+        ]);
+        setFoods(foodResponse.data.foods || []);
+        setDonorClaims(claimResponse.data.claims || []);
+      } else {
+        const [foodResponse, claimResponse] = await Promise.all([
+          api.get("/food", { params: { status: "all" } }),
+          api.get("/food/my-claims")
+        ]);
+        setFoods(foodResponse.data.foods || []);
+        setMyClaims(claimResponse.data.claims || []);
+      }
+    } catch (err) {
+      showNotice(
+        err.response?.data?.message || "Could not load dashboard data. Check your backend connection and try again.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function cancelDonorClaim(claim) {
     if (!claim?._id) return;
     if (!window.confirm("Cancel this reservation on your food donation? The reserved quantity will be returned to your available stock.")) return;
@@ -289,6 +325,8 @@ function App() {
       loadMyClaims();
     } else if (tab === "donor-claims") {
       loadDonorClaims();
+    } else if (tab === "dashboard") {
+      loadDashboard();
     } else {
       loadFoods();
     }
@@ -309,48 +347,52 @@ function App() {
 
 
   function saveSession(data) {
+    if (!data?.token || !data?.user) {
+      throw new Error("The server response is missing the login token or user details.");
+    }
 
     localStorage.setItem("sfr_token", data.token);
-
     localStorage.setItem("sfr_user", JSON.stringify(data.user));
-
     api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
-
     setSession({ token: data.token, user: data.user });
-
     setModal("");
-
-    showNotice(`Welcome, ${data.user.name}!`);
-
+    showNotice(`Welcome, ${data.user.name || "to RescueBite"}!`);
   }
 
-
-
   async function submitAuth(e) {
-
     e.preventDefault();
+    if (submitting) return;
 
     setSubmitting(true);
 
     try {
-
       const endpoint = authMode === "login" ? "/auth/login" : "/auth/register";
+      const email = String(authForm.email || "").trim().toLowerCase();
+      const password = String(authForm.password || "");
+      const payload = authMode === "login"
+        ? { email, password }
+        : { ...authForm, name: String(authForm.name || "").trim(), email, password };
 
-      const payload = authMode === "login" ? { email: authForm.email, password: authForm.password } : authForm;
+      const response = await api.post(endpoint, payload);
+      const data = response.data;
 
-      const { data } = await api.post(endpoint, payload);
+      if (!data?.token || !data?.user) {
+        throw new Error(
+          "The server responded but did not return a token and user. Check that /api/auth/login returns { token, user }."
+        );
+      }
 
       saveSession(data);
-
     } catch (err) {
-
-      showNotice(err.response?.data?.message || "Unable to authenticate. Is the server running?", "error");
-
-    } finally { setSubmitting(false); }
-
+      const message = err.response?.data?.message ||
+        (err.code === "ERR_NETWORK"
+          ? `Cannot connect to the backend at ${API}. Start the backend and verify its port and URL.`
+          : err.message || "Unable to authenticate. Check your email and password.");
+      showNotice(message, "error");
+    } finally {
+      setSubmitting(false);
+    }
   }
-
-
 
   function logout() {
 
@@ -456,6 +498,36 @@ function App() {
 
 
 
+  const dashboardClaimList = user?.role === "donor" ? donorClaims : myClaims;
+  const activeClaimStatuses = ["reserved", "confirmed", "picked_up"];
+  const completedDashboardClaims = dashboardClaimList.filter(claim => claim.status === "completed");
+  const activeDashboardClaims = dashboardClaimList.filter(claim => activeClaimStatuses.includes(claim.status));
+  const cancelledDashboardClaims = dashboardClaimList.filter(claim => claim.status === "cancelled");
+  const availableDashboardFoods = foods.filter(food => food.status === "available" && Number(food.remainingQuantity ?? food.quantity ?? 0) > 0);
+  const totalAvailableUnits = foods.reduce((sum, food) => sum + Math.max(0, Number(food.remainingQuantity ?? food.quantity ?? 0) || 0), 0);
+  const activeReservedUnits = activeDashboardClaims.reduce((sum, claim) => sum + Math.max(0, Number(claim.quantity) || 0), 0);
+  const totalDonatedUnits = foods.reduce((sum, food) => sum + Math.max(0, Number(food.quantity) || 0), 0);
+  const statusBreakdown = [
+    { key: "reserved", label: "Reserved", count: dashboardClaimList.filter(claim => claim.status === "reserved").length },
+    { key: "confirmed", label: "Confirmed", count: dashboardClaimList.filter(claim => claim.status === "confirmed").length },
+    { key: "picked_up", label: "Picked up", count: dashboardClaimList.filter(claim => claim.status === "picked_up").length },
+    { key: "completed", label: "Completed", count: completedDashboardClaims.length },
+    { key: "cancelled", label: "Cancelled", count: cancelledDashboardClaims.length }
+  ];
+  const highestStatusCount = Math.max(1, ...statusBreakdown.map(item => item.count));
+  const dashboardMetrics = user?.role === "donor" ? [
+    { label: "Food listings", value: foods.length, note: "Total listings you posted", icon: <Package size={20} />, tint: "green" },
+    { label: "Available units", value: totalAvailableUnits, note: "Quantity still available", icon: <Leaf size={20} />, tint: "orange" },
+    { label: "Active reservations", value: activeDashboardClaims.length, note: `${activeReservedUnits} units reserved`, icon: <Users size={20} />, tint: "blue" },
+    { label: "Rescues completed", value: completedDashboardClaims.length, note: `${completedDashboardClaims.reduce((sum, claim) => sum + (Number(claim.quantity) || 0), 0)} units handed over`, icon: <CheckCircle2 size={20} />, tint: "purple" }
+  ] : [
+    { label: "Available listings", value: availableDashboardFoods.length, note: "Food listings to explore", icon: <Package size={20} />, tint: "green" },
+    { label: "Active reservations", value: activeDashboardClaims.length, note: `${activeReservedUnits} units reserved`, icon: <HandHeart size={20} />, tint: "orange" },
+    { label: "Rescues completed", value: completedDashboardClaims.length, note: "Your completed pickups", icon: <CheckCircle2 size={20} />, tint: "blue" },
+    { label: "Cancelled claims", value: cancelledDashboardClaims.length, note: "Cancelled reservations", icon: <X size={20} />, tint: "purple" }
+  ];
+  const recentDashboardClaims = dashboardClaimList.slice(0, 5);
+
   const pageTitle = tab === "my-donations" ? "My donations" : tab === "my-claims" ? "My food claims" : tab === "donor-claims" ? "Claims received" : "Rescue food near you";
 
   const pageSubtitle = tab === "my-donations" ? "Track your surplus food and see who claimed it." : tab === "my-claims" ? "Review the food you reserved and its pickup details." : tab === "donor-claims" ? "Review recipient details and move each rescue from reservation to pickup and completion." : "Good food deserves a second chance. Discover surplus food shared by your community.";
@@ -470,13 +542,14 @@ function App() {
 
         <span className="brand-icon"><Leaf size={23} /></span>
 
-        <span>smart<span className="brand-light">rescue</span><small>FOOD FOR GOOD</small></span>
+        <span>RescueBite<small className="brand-tagline">Every Meal Deserves a Second Chance</small></span>
 
       </a>
 
       <nav className="nav-links">
 
         <button className={tab === "marketplace" ? "nav-link active" : "nav-link"} onClick={() => setTab("marketplace")}>Marketplace</button>
+        {isLoggedIn && <button className={tab === "dashboard" ? "nav-link active" : "nav-link"} onClick={() => setTab("dashboard")}><LayoutDashboard size={15} /> Dashboard</button>}
 
         {isLoggedIn && user.role === "donor" && <button className={tab === "my-donations" ? "nav-link active" : "nav-link"} onClick={() => setTab("my-donations")}>My donations</button>}
         {isLoggedIn && user.role === "donor" && <button className={tab === "donor-claims" ? "nav-link active" : "nav-link"} onClick={() => setTab("donor-claims")}>Claims received</button>}
@@ -590,7 +663,7 @@ function App() {
 
 
 
-      <section className="impact-strip">
+      {tab !== "dashboard" && <section className="impact-strip">
 
         <div className="impact-item"><span className="impact-icon"><Package size={20}/></span><span><b>{stats.available}</b><small>Available listings</small></span></div>
 
@@ -600,11 +673,95 @@ function App() {
 
         <div className="impact-note"><Leaf size={17}/> Every rescue starts with sharing.</div>
 
-      </section>
+      </section>}
 
 
 
-      <section className={`market-section ${tab === "donor-claims" ? "claims-market-section" : tab === "my-claims" ? "my-claims-market-section" : ""}`} id="marketplace">
+      {tab === "dashboard" && isLoggedIn && (
+        <section className="dashboard-section">
+          <div className="dashboard-welcome">
+            <div className="dashboard-welcome-copy">
+              <span className="eyebrow"><span className="eyebrow-dot"></span> YOUR IMPACT, AT A GLANCE</span>
+              <h1>Welcome back, {user.name?.split(" ")[0] || "there"}.</h1>
+              <p>{user.role === "donor" ? "Track your shared food, reservations and completed rescues in one place." : "Keep track of your food reservations and discover your next rescue."}</p>
+            </div>
+            <div className="dashboard-welcome-actions">
+              {user.role === "donor" ? (
+                <>
+                  <button type="button" className="button button-primary" onClick={openCreate}><Plus size={17}/> Donate food</button>
+                  <button type="button" className="button button-outline" onClick={() => setTab("donor-claims")}>View claims <ArrowRight size={16}/></button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="button button-primary" onClick={() => setTab("marketplace")}>Find food <ArrowRight size={17}/></button>
+                  <button type="button" className="button button-outline" onClick={() => setTab("my-claims")}>My claims</button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="dashboard-loading"><LoaderCircle className="spin" size={28}/><strong>Loading your dashboard...</strong></div>
+          ) : (
+            <>
+              <div className="dashboard-metrics">
+                {dashboardMetrics.map(metric => (
+                  <article className={`dashboard-metric-card metric-${metric.tint}`} key={metric.label}>
+                    <div className="dashboard-metric-top"><span className="dashboard-metric-icon">{metric.icon}</span><span className="dashboard-metric-role">{user.role === "donor" ? "DONOR" : "RECIPIENT"}</span></div>
+                    <div className="dashboard-metric-value">{metric.value}</div>
+                    <h3>{metric.label}</h3>
+                    <p>{metric.note}</p>
+                  </article>
+                ))}
+              </div>
+
+              <div className="dashboard-content-grid">
+                <section className="dashboard-panel">
+                  <div className="dashboard-panel-heading">
+                    <div><span className="dashboard-panel-kicker">LATEST UPDATES</span><h2>Recent reservations</h2></div>
+                    <button type="button" className="dashboard-text-link" onClick={() => setTab(user.role === "donor" ? "donor-claims" : "my-claims")}>View all <ArrowRight size={15}/></button>
+                  </div>
+                  {recentDashboardClaims.length === 0 ? (
+                    <div className="dashboard-empty"><span className="dashboard-empty-icon"><HandHeart size={22}/></span><strong>No reservation activity yet</strong><p>{user.role === "donor" ? "When someone reserves your food, the latest activity will appear here." : "Reserve food from the marketplace and your activity will appear here."}</p><button type="button" className="button button-outline" onClick={() => setTab(user.role === "donor" ? "my-donations" : "marketplace")}>{user.role === "donor" ? "View my donations" : "Browse food"}</button></div>
+                  ) : (
+                    <div className="dashboard-activity-list">
+                      {recentDashboardClaims.map(claim => {
+                        const food = claim.food || {};
+                        const otherPerson = user.role === "donor" ? (claim.recipient?.name || "Recipient") : (food.donor?.name || "Community donor");
+                        const activityDate = new Date(claim.claimedAt || claim.createdAt || Date.now());
+                        const dateLabel = Number.isNaN(activityDate.getTime()) ? "Date unavailable" : activityDate.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+                        return (
+                          <div className="dashboard-activity-item" key={claim._id}>
+                            <span className={`dashboard-activity-symbol activity-${claim.status || "reserved"}`}>{claim.status === "completed" ? <CheckCircle2 size={18}/> : claim.status === "picked_up" ? <Truck size={18}/> : claim.status === "cancelled" ? <X size={18}/> : <Package size={18}/>}</span>
+                            <div className="dashboard-activity-main"><strong>{food.title || "Food reservation"}</strong><span>{user.role === "donor" ? `Reserved by ${otherPerson}` : `Donor: ${otherPerson}`}</span><small>{dateLabel} · {Number(claim.quantity) || 0} {food.unit || "items"}</small></div>
+                            <span className={`status-pill status-${claim.status || "reserved"}`}>{(claim.status || "reserved").replaceAll("_", " ")}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+
+                <section className="dashboard-panel dashboard-breakdown-panel">
+                  <div className="dashboard-panel-heading"><div><span className="dashboard-panel-kicker">RESCUE WORKFLOW</span><h2>Claim status breakdown</h2></div></div>
+                  <div className="dashboard-breakdown-summary"><span><strong>{dashboardClaimList.length}</strong><small>Total reservations</small></span><span><strong>{completedDashboardClaims.reduce((sum, claim) => sum + (Number(claim.quantity) || 0), 0)}</strong><small>Units completed</small></span></div>
+                  <div className="dashboard-status-bars">
+                    {statusBreakdown.map(item => (
+                      <div className="dashboard-status-row" key={item.key}>
+                        <div className="dashboard-status-label"><span>{item.label}</span><strong>{item.count}</strong></div>
+                        <div className="dashboard-status-track"><span className={`dashboard-status-fill fill-${item.key}`} style={{ width: `${(item.count / highestStatusCount) * 100}%` }} /></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="dashboard-tip"><Leaf size={18}/><p>{user.role === "donor" ? `You have shared ${totalDonatedUnits} units across ${foods.length} listing${foods.length === 1 ? "" : "s"}. Every reservation is a step toward less food waste.` : `You currently have ${activeReservedUnits} units in active reservations. Check pickup deadlines in My Claims to keep each rescue on track.`}</p></div>
+                </section>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {tab !== "dashboard" && <section className={`market-section ${tab === "donor-claims" ? "claims-market-section" : tab === "my-claims" ? "my-claims-market-section" : ""}`} id="marketplace">
 
         <div className="section-heading">
 
@@ -760,11 +917,11 @@ function App() {
           </>
         )}
 
-      </section>
+      </section>}
 
 
 
-      <section className="how-section">
+      {tab !== "dashboard" && <section className="how-section">
 
         <div className="center-heading"><div className="eyebrow">SMALL ACTION, REAL IMPACT</div><h2>How food rescue works</h2><p>Three simple steps bring surplus food to the people who need it.</p></div>
 
@@ -778,13 +935,13 @@ function App() {
 
         </div>
 
-      </section>
+      </section>}
 
     </main>
 
 
 
-    <footer className="footer"><a className="brand footer-brand" href="#"><span className="brand-icon"><Leaf size={20}/></span><span>smart<span className="brand-light">rescue</span></span></a><span>Rescuing food. Nourishing communities.</span><span>Made with care <HeartHandshake size={15}/></span></footer>
+    <footer className="footer"><a className="brand footer-brand" href="#"><span className="brand-icon"><Leaf size={20}/></span><span>RescueBite</span></a><span>Every Meal Deserves a Second Chance</span><span>Made with care <HeartHandshake size={15}/></span></footer>
 
 
 
@@ -800,7 +957,7 @@ function App() {
 
         <Field label="Email address"><input type="email" required value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} placeholder="you@example.com"/></Field>
 
-        <Field label="Password"><input type="password" minLength="8" required value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} placeholder="At least 8 characters"/></Field>
+        <Field label="Password"><input type="password" minLength={authMode === "register" ? 8 : undefined} autoComplete={authMode === "login" ? "current-password" : "new-password"} required value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} placeholder={authMode === "register" ? "At least 8 characters" : "Enter your password"}/></Field>
 
         {authMode === "register" && <Field label="I want to"><select value={authForm.role} onChange={e => setAuthForm({ ...authForm, role: e.target.value })}><option value="donor">Donate surplus food</option><option value="recipient">Claim available food</option></select></Field>}
 
@@ -808,7 +965,7 @@ function App() {
 
       </form>
 
-      <p className="switch-auth">{authMode === "login" ? "New to Smart Rescue?" : "Already have an account?"} <button onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}>{authMode === "login" ? "Create an account" : "Log in"}</button></p>
+      <p className="switch-auth">{authMode === "login" ? "New to RescueBite?" : "Already have an account?"} <button onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}>{authMode === "login" ? "Create an account" : "Log in"}</button></p>
 
       <p className="modal-note"><ShieldCheck size={15}/> Passwords are securely hashed on the server.</p>
 
