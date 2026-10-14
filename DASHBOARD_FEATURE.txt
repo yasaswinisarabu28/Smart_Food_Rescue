@@ -1,0 +1,36 @@
+RescueBite FOOD RESCUE — ROLE-AWARE DASHBOARD
+
+WHAT WAS ADDED
+- A Dashboard navigation item for signed-in donors and recipients.
+- Donor summary cards: food listings, available units, active reservations, and completed rescues.
+- Recipient summary cards: available listings, active reservations, completed rescues, and cancelled claims.
+- Recent reservation activity with food title, other party, date, quantity, and status.
+- Claim status breakdown bars for reserved, confirmed, picked up, completed, and cancelled claims.
+- Short role-specific impact summary and quick links to relevant parts of the application.
+- Responsive layouts for desktop, split-screen, tablet, and mobile widths.
+
+FILES UPDATED FOR THE DASHBOARD
+- client/src/App.jsx
+- client/src/styles.css
+
+INSTALLATION
+1. Stop your Vite frontend with Ctrl+C.
+2. Back up your current project.
+3. Extract this archive and copy its matching files into your existing project, keeping the folder structure.
+4. Replace client/src/App.jsx and client/src/styles.css with the versions in this archive.
+5. Keep your existing server/.env and client/.env files.
+6. Do not rerun the Food/Claim migration; this dashboard uses existing endpoints and does not require a database migration.
+
+RUN
+Backend terminal: cd server && npm run dev
+Frontend terminal, separately: cd client && npm run dev
+Open the local Vite URL, log in, and select Dashboard in the navigation.
+
+TEST
+- As a donor, post food, then confirm that the dashboard lists your listings and reservation counts.
+- As a recipient, reserve food and confirm that active reservations and recent activity appear on the dashboard.
+- Change a claim status, return to Dashboard, and verify that status counts and activity refresh.
+- Test at a narrow browser width to confirm the cards stack without horizontal clipping.
+
+VALIDATION
+JSX transpilation diagnostics and backend JavaScript syntax checks passed in the packaging environment. A full Vite production build and live database/browser test were not run here, so perform the local test sequence above.

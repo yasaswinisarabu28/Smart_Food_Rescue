@@ -1,4 +1,4 @@
-SMART FOOD RESCUE — DONOR CLAIMS + RESPONSIVE LAYOUT UPDATE
+RescueBite FOOD RESCUE — DONOR CLAIMS + RESPONSIVE LAYOUT UPDATE
 
 This archive includes the quantity-based recipient flow plus all three donor features:
 1. Claims received dashboard for the logged-in donor's own food listings.
@@ -44,3 +44,7 @@ TEST AS TWO DIFFERENT ACCOUNTS
 5. Test in a split-screen browser window and confirm the navigation, cards and action buttons fit without clipping.
 
 Validation performed here: backend JavaScript syntax check passed, React JSX transpilation diagnostics were empty, CSS brace balance was checked, and the ZIP integrity will be checked after packaging. A full Vite production build was not run because frontend dependencies were not installed in the packaging environment; run the app locally and report any exact console/server error if one appears.
+
+
+DASHBOARD ADDITION
+The Dashboard navigation item is available after login for both roles. It displays role-specific metrics, recent reservations, and status breakdowns. Replace client/src/App.jsx and client/src/styles.css to receive the dashboard. No new API endpoint or database migration is required; it uses the existing food, My Claims, and Donor Claims endpoints. See DASHBOARD_FEATURE.txt for the dashboard test steps.

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "migrate:claims": "node scripts/migrateFoodClaims.js"
+    "migrate": "node scripts/migrateFoodClaims.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

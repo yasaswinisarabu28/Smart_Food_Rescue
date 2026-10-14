@@ -1,4 +1,4 @@
-SMART FOOD RESCUE - IN-APP NOTIFICATIONS
+RescueBite FOOD RESCUE - IN-APP NOTIFICATIONS
 
 Included:
 - Donors are notified when a recipient reserves food.

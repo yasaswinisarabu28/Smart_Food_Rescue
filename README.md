@@ -1,83 +1,62 @@
 # Smart Food Rescue (MERN)
 
-Smart Food Rescue connects surplus food donors with recipients. This version includes quantity-based reservations, a recipient **My Claims** page, safe reservation cancellation with stock restoration, and a donor dashboard for reviewing recipient details and tracking each reservation through confirmation, pickup, and completion.
-
-## Features
-
-- Register and log in as a donor or recipient.
-- Donors can publish food listings with a quantity, unit, pickup location, and deadline.
-- Recipients can reserve a selected quantity using the quantity selector.
-- Recipients can view their claims and cancel a reservation that is still `reserved` or `confirmed`.
-- Cancellation restores stock and prevents duplicate cancellations or stock exceeding the original quantity.
-- Donors can view claims only for their own food listings, including recipient name/email, reserved quantity, reservation time, location, and pickup deadline.
-- Donors can move claims through `reserved` → `confirmed` → `picked_up` → `completed`.
-- Backend role/ownership checks protect claim status updates and cancellation.
+A full-stack MVP that connects surplus food donors with recipients. It includes user registration/login, role checks, food listing creation, search/category filters, atomic claim handling, and rescue completion.
 
 ## Requirements
-
 - Node.js LTS and npm
-- MongoDB Atlas or a local MongoDB instance
+- MongoDB Atlas account (or a local MongoDB instance)
 - VS Code
 
 ## 1. Configure MongoDB and backend
 
-In MongoDB Atlas, create a database user, allow your current IP in Network Access, and copy the Node.js connection string. Replace the username/password placeholders and encode special characters in the password if necessary.
+In MongoDB Atlas, create a free cluster, create a database user, allow your current IP in Network Access, and copy the Node.js connection string. Replace the username/password placeholders and encode special characters in the password if needed.
 
 ```bash
 cd server
 npm install
 ```
 
-Copy `server/.env.example` to `server/.env` and set `MONGODB_URI` and `JWT_SECRET`. Keep `.env` private and never commit it.
+Copy `.env.example` to `.env`, then edit `MONGODB_URI` and `JWT_SECRET`. Keep `.env` private and never commit it.
 
-Windows PowerShell (from the `server` folder):
-
+Windows PowerShell:
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Start the API:
+macOS/Linux:
+```bash
+cp .env.example .env
+```
 
+Start the API:
 ```bash
 npm run dev
 ```
-
-The API should report that MongoDB is connected and it is running on port 5000. Check `http://localhost:5000/api/health`.
-
-### Database migration note
-
-If your database was already migrated to the quantity-based `Food` and `Claim` models, **do not run the migration again just because you replaced these files**. If you are upgrading an older database that still uses the original embedded `Food.claim` structure, take a database backup first, then run the one-time migration from the `server` folder:
-
-```bash
-npm run migrate:claims
-```
-
-The migration is written to avoid duplicate claim records, but a backup is still recommended before database changes.
+It should report that MongoDB is connected and the API is running on port 5000. Check `http://localhost:5000/api/health`.
 
 ## 2. Start the frontend in a second terminal
-
-From the project root, open a second terminal:
 
 ```bash
 cd client
 npm install
-npm run dev
 ```
 
-The default API URL is `http://localhost:5000/api`. To change it, copy `client/.env.example` to `client/.env` and set `VITE_API_URL`.
+Optional: copy `.env.example` to `.env` if you need to change the API URL. The default is `http://localhost:5000/api`.
 
+```bash
+npm run dev
+```
 Open the local URL Vite prints, usually `http://localhost:5173`.
 
-## 3. Test the complete workflow
+## 3. Test the main workflow
 
 1. Register a **donor** account.
-2. Publish a food listing with a future pickup deadline and a quantity greater than zero.
-3. Log out and register a **recipient** account with a different email.
-4. Find the listing and reserve a quantity.
-5. Open **My claims** as the recipient. Confirm the reserved quantity is listed; test cancellation on a reservation that has not been picked up.
-6. Log in as the donor and open **Claims received**.
-7. Check the recipient name/email and reserved quantity.
-8. Click **Confirm reservation**, then **Mark picked up**, then **Complete rescue**, refreshing the page between actions if you need to verify stored statuses.
+2. Click **Donate food** and publish a listing with a future pickup deadline.
+3. Log out.
+4. Register a separate **recipient** account using a different email.
+5. Find the listing and click **Claim this food**.
+6. Log out and log back in as the donor to see the claim.
+7. The donor or claiming recipient can mark the rescue complete.
 
 ## API routes
 
@@ -85,29 +64,30 @@ Open the local URL Vite prints, usually `http://localhost:5173`.
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `GET /api/food?status=available&category=all&search=`
-- `GET /api/food?mine=true&status=all` (bearer token required)
-- `GET /api/food/my-claims` (recipient)
-- `GET /api/food/donor-claims` (donor; own listings only)
+- `GET /api/food?mine=true&status=all` (requires bearer token)
 - `POST /api/food` (donor)
-- `POST /api/food/:id/claim` (recipient; JSON `{ "quantity": 2 }`)
-- `PATCH /api/food/claims/:claimId/cancel` (recipient; their own reserved/confirmed claim)
-- `PATCH /api/food/claims/:claimId/status` (donor; `{ "status": "confirmed" }` or `{ "status": "picked_up" }`)
-- `PATCH /api/food/claims/:claimId/complete` (donor or recipient involved in the claim)
+- `POST /api/food/:id/claim` (recipient)
+- `PATCH /api/food/:id/complete` (donor or claiming recipient)
 
 ## Important MVP limitations
 
 - This is a student MVP, not a production food-safety or emergency-response service.
-- Status and stock updates use guarded MongoDB operations, but a production deployment should use MongoDB transactions for operations that must update multiple documents atomically; transactions require a replica set.
-- Recipient email is shown only to the donor who owns the food listing associated with the claim.
-- The browser demo stores the JWT in `localStorage` for simplicity. For production, consider secure HTTP-only cookies, rate limiting, CSRF protections where applicable, audit logging, and stronger operational controls.
-- Impact-strip values reflect the currently loaded result set, not independent platform-wide aggregate reporting.
-- Before using this with real food, add clear allergen, storage, preparation, and safe pickup procedures.
+- Listings use a single all-or-nothing claim; partial quantity claims, organization verification, image uploads, and email/real-time notifications are not included yet.
+- The current browser demo stores the JWT in localStorage for simplicity. For a production deployment, prefer secure, HTTP-only cookies, rate limiting, CSRF protections where applicable, audit logging, and stronger operational controls.
+- The impact strip reflects the currently loaded result set, not an independently aggregated platform-wide report.
+- Before using with real food, add clear allergen, storage, preparation, and safe pickup procedures.
 
 ## Git hygiene
 
-The `.env` files are intentionally excluded. Add secrets only to local environment variables or hosting provider settings.
+The `.env` file is intentionally not included. Add secrets only to local environment variables or hosting provider settings.
 
 
-## In-app notifications
+## RescueBite fixes and setup
 
-The app includes an authenticated notification center. Donors are notified when recipients reserve food; recipients are notified when donors confirm or mark a reservation picked up; both parties receive notifications when a reservation is cancelled or completed. Use the bell in the header to view notifications and mark them as read. Notifications are stored in MongoDB and are scoped to the signed-in user.
+1. Copy `server/.env.example` to `server/.env` and set `MONGODB_URI`, `JWT_SECRET`, and optionally `CLIENT_URL=http://localhost:5173`.
+2. From `server`, run `npm install`, then `npm run migrate` once to add `remainingQuantity` and migrate legacy claims. Back up MongoDB first.
+3. Start the API with `npm run dev` (or `npm start`, depending on scripts).
+4. From `client`, run `npm install` and `npm run dev`.
+5. Log in with the same email and password used at registration. Emails are trimmed and case-normalized; passwords remain case-sensitive. Existing account passwords cannot be recovered from their bcrypt hash; if a password is genuinely unknown, use a password-reset feature (not included here) or create a new account with a different email.
+
+Existing donations remain in MongoDB and are filtered by the logged-in donor ID in **My donations**. Public marketplace shows available listings from all donors. Make sure the app and backend use the same `MONGODB_URI` database and only one API server is running on port 5000.
