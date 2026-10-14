@@ -1,0 +1,46 @@
+SMART FOOD RESCUE — DONOR CLAIMS + RESPONSIVE LAYOUT UPDATE
+
+This archive includes the quantity-based recipient flow plus all three donor features:
+1. Claims received dashboard for the logged-in donor's own food listings.
+2. Recipient details including name/email, reserved quantity, reservation time, pickup location and deadline.
+3. Reservation confirmation, pickup tracking and completion.
+
+It also preserves the My Claims page, recipient cancellation and stock restoration, and adds donor cancellation beside the active workflow actions.
+
+LAYOUT IMPROVEMENTS
+- Adds spacing between the Claims received heading/subtitle and claim cards.
+- Aligns workflow action buttons at the bottom of donor claim cards.
+- Places Confirm reservation + Cancel and Mark picked up + Cancel side by side.
+- Makes the Claims received navigation and card grid more usable in split-screen and narrow windows.
+- Cancellation is available while a claim is reserved or confirmed. Once picked up, cancellation is disabled because the handover has begun.
+
+BEFORE REPLACING FILES
+- Stop the frontend and backend terminals with Ctrl+C.
+- Back up your existing project folder.
+- Keep your existing server/.env and client/.env files; they are intentionally not included.
+- Replace the matching files while preserving folder structure. At minimum, replace:
+  client/src/App.jsx
+  client/src/styles.css
+  server/src/routes/foodRoutes.js
+- Also copy server/src/models/Claim.js and server/src/models/Food.js from this archive if they are not already the quantity-based versions included in your working project.
+
+DATABASE
+You already reported that the Food/Claim migration completed successfully. Do NOT rerun the migration for this UI/backend-route update. Back up the database before any future migration.
+
+RUN
+Backend terminal (from the project root):
+  cd server
+  npm run dev
+
+Frontend terminal (from the project root, in a second terminal):
+  cd client
+  npm run dev
+
+TEST AS TWO DIFFERENT ACCOUNTS
+1. Recipient reserves a quantity and checks My Claims.
+2. Donor opens Claims received and reviews recipient details.
+3. Donor clicks Confirm reservation, then Mark picked up, then Complete rescue.
+4. On a separate reserved/confirmed claim, click Cancel and verify the quantity is restored.
+5. Test in a split-screen browser window and confirm the navigation, cards and action buttons fit without clipping.
+
+Validation performed here: backend JavaScript syntax check passed, React JSX transpilation diagnostics were empty, CSS brace balance was checked, and the ZIP integrity will be checked after packaging. A full Vite production build was not run because frontend dependencies were not installed in the packaging environment; run the app locally and report any exact console/server error if one appears.

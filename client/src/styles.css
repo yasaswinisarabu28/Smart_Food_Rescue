@@ -4,3 +4,309 @@
 @media(max-width:1000px){.topbar{padding:0 24px;gap:15px}.nav-links{gap:13px}.hero{padding-left:5vw;padding-right:5vw;gap:30px}.hero h1{font-size:58px}.impact-strip{margin-left:5vw;margin-right:5vw;grid-template-columns:repeat(2,1fr)}.impact-note{justify-content:flex-start}.market-section,.how-section{padding-left:5vw;padding-right:5vw}.food-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-art>img{height:290px}.float-top{left:-8px}.float-bottom{right:-8px}}
 @media(max-width:700px){.topbar{height:auto;min-height:72px;padding:14px 18px;flex-wrap:wrap;gap:12px}.brand{font-size:19px}.brand-icon{width:37px;height:37px}.nav-links{order:3;width:100%;height:38px;justify-content:center;border-top:1px solid #f0f2ed}.nav-link{height:38px}.header-actions{margin-left:auto;gap:7px}.user-name,.header-login{display:none}.header-donate{padding:10px 11px;font-size:11px}.icon-button{width:35px;height:35px}.hero{grid-template-columns:1fr;padding:45px 23px 45px;gap:28px}.hero h1{font-size:53px;letter-spacing:-2.8px}.hero-copy>p{font-size:13px}.hero-actions{margin-top:22px}.button-large{padding:12px 13px;font-size:11px}.hero-trust{gap:13px;font-size:10px}.hero-art{min-height:260px;margin:0 10px}.hero-art>img{height:250px;width:90%;border-radius:45% 45% 18px 18px}.art-circle{width:260px;height:260px;right:4%}.floating-card{padding:9px 10px;gap:7px}.float-icon{width:31px;height:31px}.floating-card b{font-size:10px}.floating-card small{font-size:9px}.float-top{left:-10px;top:17px}.float-bottom{right:-12px;bottom:13px}.impact-strip{margin:0 17px;grid-template-columns:1fr 1fr;padding:18px 15px;gap:17px 10px}.impact-item{gap:8px}.impact-icon{width:35px;height:35px}.impact-item b{font-size:17px}.impact-item small{font-size:10px}.impact-note{font-size:10px;grid-column:1/-1}.market-section{padding:52px 18px}.section-heading{align-items:flex-start;flex-direction:column}.section-heading h2,.center-heading h2{font-size:29px}.section-heading p{font-size:12px}.filter-bar{padding:9px;gap:8px;flex-wrap:wrap}.search-box{flex-basis:100%}.select-wrap{flex:1;justify-content:space-between}.filter-count{margin-left:auto}.food-grid{grid-template-columns:1fr;gap:15px}.food-card-art{height:165px}.food-card-body{padding:16px}.how-section{padding:50px 18px}.steps-grid{grid-template-columns:1fr;gap:13px;margin-top:28px}.step-card{padding:22px}.step-card h3{margin-top:13px}.footer{padding:23px 18px;flex-wrap:wrap;justify-content:center;text-align:center}.footer>span:nth-child(2){width:100%;order:3}.modal-panel{padding:24px 20px}.modal-panel h2{font-size:23px}.toast{right:12px;bottom:12px}.form-row{grid-template-columns:1fr 1fr}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Claim workflow statuses */
+.status-reserved{background:#fff4dd;color:#98631c}
+.status-confirmed{background:#e7f1ff;color:#315f98}
+.status-picked_up{background:#e4f4ed;color:#24744e}
+.status-cancelled{background:#f8e9e6;color:#a24f42}
+.status-expired{background:#f8e9e6;color:#a24f42}
+@media(max-width:950px){.nav-links{gap:12px;flex-wrap:wrap;justify-content:center}.nav-link{font-size:12px}.topbar{gap:14px;padding-left:20px;padding-right:20px}}
+
+/* Donor claims: clearer spacing, side-by-side actions, and responsive layout. */
+.claims-market-section .section-heading {
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 36px;
+}
+.claims-market-section .section-heading > div {
+  min-width: 0;
+  max-width: 760px;
+}
+.claims-market-section .section-heading p {
+  max-width: 680px;
+  line-height: 1.85;
+}
+.claims-market-section .food-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: stretch;
+  gap: 24px;
+  margin-bottom: 36px;
+}
+.donor-claim-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+.donor-claim-card .food-card-art {
+  flex: 0 0 auto;
+}
+.donor-claim-card .food-card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.donor-claim-card .food-card-top {
+  flex-wrap: wrap;
+}
+.donor-claim-card .posted-by {
+  max-width: 58%;
+}
+.donor-claim-card .food-description {
+  min-height: 44px;
+}
+.donor-claim-card .food-meta {
+  overflow-wrap: anywhere;
+}
+.claim-workflow-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 22px;
+}
+.claim-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, 0.55fr);
+  gap: 10px;
+  width: 100%;
+}
+.claim-action-row .button {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 8px;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.button-cancel {
+  background: #fff8f6;
+  color: #a34230;
+  border-color: #efd0c8;
+  box-shadow: none;
+}
+.button-cancel:hover:not(:disabled) {
+  background: #fff0ec;
+  border-color: #e7b9ae;
+}
+.claim-action-note {
+  margin: 0;
+  padding-top: 3px;
+  color: #8a968b;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.claim-workflow-actions .claim-info {
+  margin-top: 0;
+  min-height: 44px;
+  line-height: 1.5;
+}
+
+/* Keep the navigation readable in desktop split-screen widths. */
+@media (min-width: 701px) and (max-width: 1100px) {
+  .topbar {
+    height: auto;
+    min-height: 82px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    padding-bottom: 0;
+    row-gap: 8px;
+  }
+  .brand small {
+    display: none;
+  }
+  .nav-links {
+    order: 3;
+    flex: 1 0 100%;
+    width: 100%;
+    height: 44px;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: clamp(12px, 2.5vw, 28px);
+    overflow-x: auto;
+  }
+  .nav-link {
+    height: 44px;
+    flex: 0 0 auto;
+    padding: 0 3px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 700px) {
+  .claims-market-section .section-heading {
+    gap: 15px;
+    margin-bottom: 26px;
+  }
+  .claims-market-section .food-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 17px;
+  }
+  .claim-action-row {
+    grid-template-columns: minmax(0, 1fr) minmax(88px, 0.55fr);
+    gap: 8px;
+  }
+  .nav-links {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 14px;
+    scrollbar-width: thin;
+  }
+  .nav-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0 2px;
+  }
+}
+
+
+/* In-app notification center */
+.notification-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.notification-toggle {
+  position: relative;
+}
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #d75f45;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 13px);
+  right: -8px;
+  z-index: 100;
+  width: min(390px, calc(100vw - 24px));
+  overflow: hidden;
+  border: 1px solid #e3e9df;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 18px 50px #173c2c24;
+  color: #23432f;
+}
+.notification-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 17px;
+  border-bottom: 1px solid #edf0e9;
+}
+.notification-panel-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.notification-panel-head strong {
+  font-size: 14px;
+}
+.notification-panel-head small,
+.notification-item-content small {
+  color: #89968a;
+  font-size: 10px;
+}
+.notification-mark-all {
+  border: 0;
+  padding: 5px 0 5px 6px;
+  background: transparent;
+  color: #407a50;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.notification-mark-all:disabled { color: #a7b0a6; }
+.notification-list {
+  max-height: min(430px, calc(100vh - 190px));
+  overflow-y: auto;
+}
+.notification-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 7px;
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 15px;
+  border: 0;
+  border-bottom: 1px solid #f0f2ed;
+  background: #fff;
+  text-align: left;
+  white-space: normal;
+}
+.notification-item:hover { background: #f7faf5; }
+.notification-item.is-unread { background: #f5f9f1; }
+.notification-item-mark {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #e8f3e5;
+  color: #437c50;
+}
+.notification-item-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notification-item-content strong {
+  color: #274a34;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.notification-item-content > span {
+  color: #718074;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.notification-unread-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #64a575;
+}
+.notification-empty {
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 22px;
+  color: #8b978c;
+  font-size: 11px;
+  text-align: center;
+}
+.notification-empty strong { color: #3b5943; font-size: 12px; }
+@media (max-width: 700px) {
+  .notification-dropdown { right: -112px; width: min(360px, calc(100vw - 24px)); }
+  .notification-panel-head { padding: 14px; }
+  .notification-item { padding: 12px; }
+}

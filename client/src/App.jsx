@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import axios from "axios";
+import { Bell } from "lucide-react";
 
 import {
 
@@ -8,7 +9,7 @@ import {
 
   LogOut, Utensils, CheckCircle2, Sprout, Users, ArrowRight, X, LoaderCircle,
 
-  LayoutDashboard, HandHeart, ShieldCheck, AlertCircle
+  LayoutDashboard, HandHeart, ShieldCheck, AlertCircle, Mail, Truck, ClipboardCheck
 
 } from "lucide-react";
 
@@ -48,7 +49,12 @@ function App() {
 
   const [foods, setFoods] = useState([]);
   const [myClaims, setMyClaims] = useState([]);
+  const [donorClaims, setDonorClaims] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationBusy, setNotificationBusy] = useState(false);
   const [cancelBusyId, setCancelBusyId] = useState("");
+  const [statusBusyId, setStatusBusyId] = useState("");
 
   const [loading, setLoading] = useState(true);
 
@@ -89,6 +95,50 @@ function App() {
   }
 
 
+
+  async function loadNotifications() {
+    if (!session.token) {
+      setNotifications([]);
+      return;
+    }
+    setNotificationBusy(true);
+    try {
+      const { data } = await api.get("/notifications");
+      setNotifications(data.notifications || []);
+    } catch (err) {
+      showNotice(err.response?.data?.message || "Could not load notifications.", "error");
+    } finally {
+      setNotificationBusy(false);
+    }
+  }
+
+  async function markNotificationRead(notification) {
+    if (!notification?._id || notification.readAt) return;
+    try {
+      const { data } = await api.patch(`/notifications/${notification._id}/read`);
+      const readAt = data.notification?.readAt || new Date().toISOString();
+      setNotifications(current => current.map(item => item._id === notification._id ? { ...item, readAt } : item));
+    } catch (err) {
+      showNotice(err.response?.data?.message || "Could not mark the notification as read.", "error");
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    if (!notifications.some(item => !item.readAt)) return;
+    try {
+      const { data } = await api.patch("/notifications/read-all");
+      const readAt = data.readAt || new Date().toISOString();
+      setNotifications(current => current.map(item => ({ ...item, readAt: item.readAt || readAt })));
+      showNotice(data.message || "All notifications marked as read.");
+    } catch (err) {
+      showNotice(err.response?.data?.message || "Could not mark notifications as read.", "error");
+    }
+  }
+
+  function formatNotificationDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "Recently" : date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
 
   async function loadFoods() {
 
@@ -148,9 +198,97 @@ function App() {
     }
   }
 
+  async function loadDonorClaims() {
+    if (!isLoggedIn || user?.role !== "donor") {
+      setDonorClaims([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await api.get("/food/donor-claims");
+      setDonorClaims(data.claims || []);
+    } catch (err) {
+      setDonorClaims([]);
+      showNotice(
+        err.response?.data?.message ||
+          "Could not load claims for your donations. Check that GET /api/food/donor-claims is enabled.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function cancelDonorClaim(claim) {
+    if (!claim?._id) return;
+    if (!window.confirm("Cancel this reservation on your food donation? The reserved quantity will be returned to your available stock.")) return;
+
+    setCancelBusyId(claim._id);
+    try {
+      const { data } = await api.patch(`/food/claims/${claim._id}/cancel`);
+      await loadDonorClaims();
+      showNotice(data.message || "Reservation cancelled and quantity returned to stock.");
+    } catch (err) {
+      showNotice(
+        err.response?.data?.message ||
+          "Could not cancel this reservation. Check the backend cancellation route.",
+        "error"
+      );
+    } finally {
+      setCancelBusyId("");
+    }
+  }
+
+  async function updateDonorClaimStatus(claim, status) {
+    if (!claim?._id) return;
+    const actionText = status === "confirmed" ? "confirm this reservation" : "mark this reservation as picked up";
+    if (!window.confirm(`Are you sure you want to ${actionText}?`)) return;
+
+    setStatusBusyId(claim._id);
+    try {
+      const { data } = await api.patch(`/food/claims/${claim._id}/status`, { status });
+      await loadDonorClaims();
+      showNotice(data.message || "Claim status updated successfully.");
+    } catch (err) {
+      showNotice(err.response?.data?.message || "Could not update this claim status.", "error");
+    } finally {
+      setStatusBusyId("");
+    }
+  }
+
+  async function completeDonorClaim(claim) {
+    if (!claim?._id) return;
+    if (!window.confirm("Mark this rescue as completed? This action records the food handover as complete.")) return;
+
+    setStatusBusyId(claim._id);
+    try {
+      const { data } = await api.patch(`/food/claims/${claim._id}/complete`);
+      await loadDonorClaims();
+      showNotice(data.message || "Rescue marked as completed.");
+      await loadFoods();
+    } catch (err) {
+      showNotice(err.response?.data?.message || "Could not complete this rescue.", "error");
+    } finally {
+      setStatusBusyId("");
+    }
+  }
+
+  useEffect(() => {
+    if (session.token) {
+      loadNotifications();
+    } else {
+      setNotifications([]);
+      setNotificationOpen(false);
+    }
+  }, [session.token]);
+
   useEffect(() => {
     if (tab === "my-claims") {
       loadMyClaims();
+    } else if (tab === "donor-claims") {
+      loadDonorClaims();
     } else {
       loadFoods();
     }
@@ -318,9 +456,9 @@ function App() {
 
 
 
-  const pageTitle = tab === "my-donations" ? "My donations" : tab === "my-claims" ? "My food claims" : "Rescue food near you";
+  const pageTitle = tab === "my-donations" ? "My donations" : tab === "my-claims" ? "My food claims" : tab === "donor-claims" ? "Claims received" : "Rescue food near you";
 
-  const pageSubtitle = tab === "my-donations" ? "Track your surplus food and see who claimed it." : tab === "my-claims" ? "Review the food you reserved and its pickup details." : "Good food deserves a second chance. Discover surplus food shared by your community.";
+  const pageSubtitle = tab === "my-donations" ? "Track your surplus food and see who claimed it." : tab === "my-claims" ? "Review the food you reserved and its pickup details." : tab === "donor-claims" ? "Review recipient details and move each rescue from reservation to pickup and completion." : "Good food deserves a second chance. Discover surplus food shared by your community.";
 
 
 
@@ -341,11 +479,58 @@ function App() {
         <button className={tab === "marketplace" ? "nav-link active" : "nav-link"} onClick={() => setTab("marketplace")}>Marketplace</button>
 
         {isLoggedIn && user.role === "donor" && <button className={tab === "my-donations" ? "nav-link active" : "nav-link"} onClick={() => setTab("my-donations")}>My donations</button>}
+        {isLoggedIn && user.role === "donor" && <button className={tab === "donor-claims" ? "nav-link active" : "nav-link"} onClick={() => setTab("donor-claims")}>Claims received</button>}
         {isLoggedIn && user.role === "recipient" && <button className={tab === "my-claims" ? "nav-link active" : "nav-link"} onClick={() => setTab("my-claims")}>My claims</button>}
 
       </nav>
 
       <div className="header-actions">
+
+        {isLoggedIn && <div className="notification-wrap">
+          <button
+            type="button"
+            className="icon-button notification-toggle"
+            title="Notifications"
+            aria-label={`Notifications${notifications.some(item => !item.readAt) ? `, ${notifications.filter(item => !item.readAt).length} unread` : ""}`}
+            aria-expanded={notificationOpen}
+            onClick={() => {
+              const open = !notificationOpen;
+              setNotificationOpen(open);
+              if (open) loadNotifications();
+            }}
+          >
+            <Bell size={18} />
+            {notifications.some(item => !item.readAt) && <span className="notification-badge">{notifications.filter(item => !item.readAt).length > 99 ? "99+" : notifications.filter(item => !item.readAt).length}</span>}
+          </button>
+          {notificationOpen && <section className="notification-dropdown" aria-label="Notifications panel">
+            <div className="notification-panel-head">
+              <div><strong>Notifications</strong><small>{notifications.filter(item => !item.readAt).length} unread</small></div>
+              <button type="button" className="notification-mark-all" onClick={markAllNotificationsRead} disabled={!notifications.some(item => !item.readAt)}>Mark all read</button>
+            </div>
+            <div className="notification-list">
+              {notificationBusy && notifications.length === 0 ? (
+                <div className="notification-empty">Loading notifications...</div>
+              ) : notifications.length === 0 ? (
+                <div className="notification-empty"><Bell size={22}/><strong>You're all caught up</strong><span>Updates about reservations will appear here.</span></div>
+              ) : notifications.map(notification => (
+                <button
+                  type="button"
+                  key={notification._id}
+                  className={`notification-item ${notification.readAt ? "is-read" : "is-unread"}`}
+                  onClick={() => markNotificationRead(notification)}
+                >
+                  <span className="notification-item-mark"><Bell size={15}/></span>
+                  <span className="notification-item-content">
+                    <strong>{notification.title}</strong>
+                    <span>{notification.message}</span>
+                    <small>{formatNotificationDate(notification.createdAt)}</small>
+                  </span>
+                  {!notification.readAt && <span className="notification-unread-dot" aria-label="Unread"/>}
+                </button>
+              ))}
+            </div>
+          </section>}
+        </div>}
 
         {isLoggedIn ? <>
 
@@ -419,7 +604,7 @@ function App() {
 
 
 
-      <section className="market-section" id="marketplace">
+      <section className={`market-section ${tab === "donor-claims" ? "claims-market-section" : tab === "my-claims" ? "my-claims-market-section" : ""}`} id="marketplace">
 
         <div className="section-heading">
 
@@ -429,7 +614,91 @@ function App() {
 
         </div>
 
-        {tab === "my-claims" ? (
+        {tab === "donor-claims" ? (
+          !isLoggedIn || user?.role !== "donor" ? (
+            <div className="empty-state"><h3>Log in as a donor</h3><p>Claims on your food donations will appear here.</p><button className="button button-primary" onClick={() => { setAuthMode("login"); setModal("auth"); }}>Log in</button></div>
+          ) : loading ? (
+            <div className="state-panel"><LoaderCircle className="spin" size={28}/><b>Loading received claims...</b></div>
+          ) : donorClaims.length === 0 ? (
+            <div className="empty-state"><span className="empty-icon"><ClipboardCheck size={30}/></span><h3>No reservations received yet</h3><p>When a recipient reserves your listed food, their reservation and pickup progress will appear here.</p><button className="button button-primary" onClick={() => setTab("my-donations")}>View my donations</button></div>
+          ) : (
+            <div className="food-grid">
+              {donorClaims.map((claim) => {
+                const food = claim.food || {};
+                const recipient = claim.recipient || {};
+                const status = claim.status || "reserved";
+                const deadline = food.pickupDeadline ? new Date(food.pickupDeadline) : null;
+                const reservedDate = claim.claimedAt || claim.createdAt;
+                const reservedAt = reservedDate ? new Date(reservedDate) : null;
+                const busy = statusBusyId === claim._id;
+                return (
+                  <article className="food-card donor-claim-card" key={claim._id}>
+                    <div className={`food-card-art ${food.category === "Bakery" ? "bakery" : food.category === "Fruits & Vegetables" ? "produce" : food.category === "Packaged Food" ? "packaged" : "meals"}`}>
+                      <span className="food-category">{food.category || "Food"}</span>
+                      <span className="food-illustration"><Users size={43}/></span>
+                      <span className="quantity-chip"><Package size={14}/>{claim.quantity} {food.unit || "items"} reserved</span>
+                    </div>
+                    <div className="food-card-body">
+                      <div className="food-card-top">
+                        <span className={`status-pill status-${status}`}>{status.replaceAll("_", " ")}</span>
+                        <span className="posted-by">{food.title || "Food listing"}</span>
+                      </div>
+                      <h3>{recipient.name || "Recipient"}</h3>
+                      <p className="food-description">Reserved <strong>{claim.quantity} {food.unit || "items"}</strong> of {food.title || "your donation"}.</p>
+                      <div className="food-meta">
+                        <span><Mail size={15}/>{recipient.email || "Email unavailable"}</span>
+                        <span><MapPin size={15}/>{food.location || "Pickup location unavailable"}</span>
+                        <span><Clock3 size={15}/>{reservedAt && !Number.isNaN(reservedAt.getTime()) ? `Reserved ${reservedAt.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "Reservation date unavailable"}</span>
+                        <span><Truck size={15}/>{deadline && !Number.isNaN(deadline.getTime()) ? `Pickup by ${deadline.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "Pickup deadline unavailable"}</span>
+                      </div>
+                      <div className="claim-workflow-actions">
+                        {status === "reserved" && (
+                          <div className="claim-action-row">
+                            <button type="button" className="button button-primary" disabled={busy || cancelBusyId === claim._id} onClick={() => updateDonorClaimStatus(claim, "confirmed")}>
+                              {busy ? <LoaderCircle className="spin" size={17}/> : <CheckCircle2 size={17}/>}
+                              {busy ? "Updating..." : "Confirm reservation"}
+                            </button>
+                            <button type="button" className="button button-cancel" disabled={busy || cancelBusyId === claim._id} onClick={() => cancelDonorClaim(claim)}>
+                              {cancelBusyId === claim._id ? <LoaderCircle className="spin" size={17}/> : <X size={17}/>}
+                              {cancelBusyId === claim._id ? "Cancelling..." : "Cancel"}
+                            </button>
+                          </div>
+                        )}
+                        {status === "confirmed" && (
+                          <div className="claim-action-row">
+                            <button type="button" className="button button-primary" disabled={busy || cancelBusyId === claim._id} onClick={() => updateDonorClaimStatus(claim, "picked_up")}>
+                              {busy ? <LoaderCircle className="spin" size={17}/> : <Truck size={17}/>}
+                              {busy ? "Updating..." : "Mark picked up"}
+                            </button>
+                            <button type="button" className="button button-cancel" disabled={busy || cancelBusyId === claim._id} onClick={() => cancelDonorClaim(claim)}>
+                              {cancelBusyId === claim._id ? <LoaderCircle className="spin" size={17}/> : <X size={17}/>}
+                              {cancelBusyId === claim._id ? "Cancelling..." : "Cancel"}
+                            </button>
+                          </div>
+                        )}
+                        {status === "picked_up" && (
+                          <>
+                            <button type="button" className="button button-primary button-full" disabled={busy} onClick={() => completeDonorClaim(claim)}>
+                              {busy ? <LoaderCircle className="spin" size={17}/> : <ClipboardCheck size={17}/>}
+                              {busy ? "Completing..." : "Complete rescue"}
+                            </button>
+                            <p className="claim-action-note">Cancellation is disabled after pickup.</p>
+                          </>
+                        )}
+                        {["completed", "cancelled", "expired"].includes(status) && (
+                          <div className={`claim-info claim-info-${status}`}>
+                            <CheckCircle2 size={15}/>
+                            {status === "completed" ? "This rescue is completed." : status === "cancelled" ? "This reservation has been cancelled." : "This reservation has expired."}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )
+        ) : tab === "my-claims" ? (
           !isLoggedIn ? (
             <div className="empty-state"><h3>Log in to view your claims</h3><p>Your reserved food and pickup details will appear here.</p><button className="button button-primary" onClick={() => { setAuthMode("login"); setModal("auth"); }}>Log in</button></div>
           ) : loading ? (

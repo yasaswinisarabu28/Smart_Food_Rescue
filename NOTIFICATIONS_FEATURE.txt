@@ -1,0 +1,35 @@
+SMART FOOD RESCUE - IN-APP NOTIFICATIONS
+
+Included:
+- Donors are notified when a recipient reserves food.
+- Recipients are notified when donors confirm the reservation or mark it picked up.
+- The other party is notified when a reservation is cancelled or a rescue is completed.
+- The header bell shows unread count and opens the notification list.
+- Users can mark an individual notification as read or mark all as read.
+- Notification reads and updates are restricted to the signed-in user's own notifications.
+
+Files added:
+- server/src/models/Notification.js
+- server/src/routes/notificationRoutes.js
+
+Files updated:
+- server/src/server.js
+- server/src/routes/foodRoutes.js
+- server/src/models/Claim.js
+- client/src/App.jsx
+- client/src/styles.css
+
+Apply the matching files to your existing project. Keep server/.env and client/.env; do not overwrite them.
+No migration is required. Existing claims receive default null cancellation metadata; new cancellations store who cancelled and when.
+
+Restart from two terminals:
+1) cd server && npm run dev
+2) cd client && npm run dev
+
+Test with two accounts:
+1. Log in as a recipient and reserve food.
+2. Log in as the donor and check the bell for a new reservation notification.
+3. Confirm and mark picked up as donor; check the recipient's notifications.
+4. Cancel a reserved/confirmed claim and check that the other party receives a cancellation notification.
+5. Complete a claim and check that the other party receives a completion notification.
+6. Open the bell and use Mark all read; the unread badge should clear.

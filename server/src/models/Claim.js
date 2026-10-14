@@ -1,44 +1,20 @@
-
 import mongoose from "mongoose";
 
 const claimSchema = new mongoose.Schema(
   {
-    food: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Food",
-      required: true,
-      index: true
-    },
-    recipient: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1
-    },
+    food: { type: mongoose.Schema.Types.ObjectId, ref: "Food", required: true, index: true },
+    recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    quantity: { type: Number, required: true, min: 1 },
     status: {
       type: String,
-      enum: [
-        "reserved",
-        "confirmed",
-        "picked_up",
-        "completed",
-        "cancelled",
-        "expired"
-      ],
+      enum: ["reserved", "confirmed", "picked_up", "completed", "cancelled", "expired"],
       default: "reserved"
     },
-    claimedAt: {
-      type: Date,
-      default: Date.now
-    },
-    completedAt: {
-      type: Date,
-      default: null
-    }
+    claimedAt: { type: Date, default: Date.now },
+    completedAt: { type: Date, default: null },
+    cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    cancelledByRole: { type: String, enum: ["donor", "recipient"], default: null },
+    cancelledAt: { type: Date, default: null }
   },
   { timestamps: true }
 );
